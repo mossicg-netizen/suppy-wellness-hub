@@ -2,11 +2,18 @@ import { useState } from "react";
 import { Link, useLocation } from "react-router-dom";
 import { Button } from "@/components/ui/button";
 import { Sheet, SheetContent, SheetTrigger } from "@/components/ui/sheet";
-import { Menu, ShoppingCart, User } from "lucide-react";
+import { DropdownMenu, DropdownMenuContent, DropdownMenuItem, DropdownMenuTrigger } from "@/components/ui/dropdown-menu";
+import { Menu, ShoppingCart, User, LogOut } from "lucide-react";
+import { useAuth } from "@/contexts/AuthContext";
+import { useCart } from "@/hooks/useCart";
+import CartDrawer from "@/components/CartDrawer";
 
 const Navigation = () => {
   const [isOpen, setIsOpen] = useState(false);
+  const [isCartOpen, setIsCartOpen] = useState(false);
   const location = useLocation();
+  const { user, signOut } = useAuth();
+  const { totalItems } = useCart();
 
   const navItems = [
     { href: "/", label: "Home" },
@@ -49,29 +56,67 @@ const Navigation = () => {
 
           {/* Desktop Actions */}
           <div className="hidden md:flex items-center space-x-4">
-            <Button variant="ghost" size="sm" className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative"
+              onClick={() => setIsCartOpen(true)}
+            >
               <ShoppingCart className="h-5 w-5" />
               <span className="sr-only">Carrello</span>
-              <span className="absolute -top-2 -right-2 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                0
-              </span>
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
             </Button>
-            <Button variant="ghost" size="sm">
-              <User className="h-5 w-5" />
-              <span className="sr-only">Account</span>
-            </Button>
-            <Button variant="default" size="sm" className="bg-gradient-primary hover:opacity-90">
-              Acquista Ora
+            
+            {user ? (
+              <DropdownMenu>
+                <DropdownMenuTrigger asChild>
+                  <Button variant="ghost" size="sm">
+                    <User className="h-5 w-5" />
+                    <span className="sr-only">Account</span>
+                  </Button>
+                </DropdownMenuTrigger>
+                <DropdownMenuContent align="end">
+                  <DropdownMenuItem asChild>
+                    <Link to="/account">Il Mio Account</Link>
+                  </DropdownMenuItem>
+                  <DropdownMenuItem onClick={signOut}>
+                    <LogOut className="h-4 w-4 mr-2" />
+                    Logout
+                  </DropdownMenuItem>
+                </DropdownMenuContent>
+              </DropdownMenu>
+            ) : (
+              <Button variant="ghost" size="sm" asChild>
+                <Link to="/auth">
+                  <User className="h-5 w-5" />
+                  <span className="sr-only">Account</span>
+                </Link>
+              </Button>
+            )}
+            
+            <Button variant="default" size="sm" className="bg-gradient-primary hover:opacity-90" asChild>
+              <Link to="/shop">Acquista Ora</Link>
             </Button>
           </div>
 
           {/* Mobile Navigation */}
           <div className="md:hidden flex items-center space-x-2">
-            <Button variant="ghost" size="sm" className="relative">
+            <Button 
+              variant="ghost" 
+              size="sm" 
+              className="relative"
+              onClick={() => setIsCartOpen(true)}
+            >
               <ShoppingCart className="h-5 w-5" />
-              <span className="absolute -top-2 -right-2 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
-                0
-              </span>
+              {totalItems > 0 && (
+                <span className="absolute -top-2 -right-2 h-4 w-4 bg-primary text-primary-foreground text-xs rounded-full flex items-center justify-center">
+                  {totalItems}
+                </span>
+              )}
             </Button>
             <Sheet open={isOpen} onOpenChange={setIsOpen}>
               <SheetTrigger asChild>
@@ -95,12 +140,31 @@ const Navigation = () => {
                     </Link>
                   ))}
                   <div className="pt-4 space-y-2">
-                    <Button variant="outline" className="w-full justify-start">
-                      <User className="h-4 w-4 mr-2" />
-                      Account
-                    </Button>
-                    <Button className="w-full bg-gradient-primary hover:opacity-90">
-                      Acquista Ora
+                    {user ? (
+                      <>
+                        <Button variant="outline" className="w-full justify-start" asChild>
+                          <Link to="/account" onClick={() => setIsOpen(false)}>
+                            <User className="h-4 w-4 mr-2" />
+                            Il Mio Account
+                          </Link>
+                        </Button>
+                        <Button variant="outline" className="w-full justify-start" onClick={() => { signOut(); setIsOpen(false); }}>
+                          <LogOut className="h-4 w-4 mr-2" />
+                          Logout
+                        </Button>
+                      </>
+                    ) : (
+                      <Button variant="outline" className="w-full justify-start" asChild>
+                        <Link to="/auth" onClick={() => setIsOpen(false)}>
+                          <User className="h-4 w-4 mr-2" />
+                          Account
+                        </Link>
+                      </Button>
+                    )}
+                    <Button className="w-full bg-gradient-primary hover:opacity-90" asChild>
+                      <Link to="/shop" onClick={() => setIsOpen(false)}>
+                        Acquista Ora
+                      </Link>
                     </Button>
                   </div>
                 </nav>
@@ -109,6 +173,8 @@ const Navigation = () => {
           </div>
         </div>
       </div>
+      
+      <CartDrawer isOpen={isCartOpen} onClose={() => setIsCartOpen(false)} />
     </header>
   );
 };

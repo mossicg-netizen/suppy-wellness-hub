@@ -7,86 +7,54 @@ import { Input } from "@/components/ui/input";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
 import { Checkbox } from "@/components/ui/checkbox";
 import { Star, Filter, Search, ShoppingCart } from "lucide-react";
-import { useState } from "react";
+import { useState, useEffect } from "react";
+import { supabase } from "@/integrations/supabase/client";
+import { useCart } from "@/hooks/useCart";
 import productsImage from "@/assets/products-showcase.jpg";
+
+interface Product {
+  id: string;
+  name: string;
+  description: string;
+  price: number;
+  original_price?: number;
+  category: string;
+  rating: number;
+  reviews_count: number;
+  badges?: string[];
+  in_stock: boolean;
+  stock_quantity: number;
+  is_vegan: boolean;
+  is_gluten_free: boolean;
+  is_natural: boolean;
+  is_sugar_free: boolean;
+}
 
 const Shop = () => {
   const [searchQuery, setSearchQuery] = useState("");
+  const [products, setProducts] = useState<Product[]>([]);
+  const [loading, setLoading] = useState(true);
+  const { addToCart } = useCart();
 
-  const products = [
-    {
-      id: 1,
-      name: "Whey Protein Premium",
-      category: "Sport",
-      price: 45.99,
-      originalPrice: 52.99,
-      rating: 4.8,
-      reviews: 1247,
-      description: "Proteine del siero del latte isolate di alta qualità per il recupero muscolare",
-      inStock: true,
-      badge: "Bestseller"
-    },
-    {
-      id: 2,
-      name: "Multivitamin Complete",
-      category: "Benessere",
-      price: 29.99,
-      originalPrice: null,
-      rating: 4.9,
-      reviews: 892,
-      description: "Complesso vitaminico completo per il benessere quotidiano",
-      inStock: true,
-      badge: "Nuovo"
-    },
-    {
-      id: 3,
-      name: "Omega-3 Ultra Pure",
-      category: "Salute",
-      price: 35.99,
-      originalPrice: 39.99,
-      rating: 4.7,
-      reviews: 634,
-      description: "Acidi grassi essenziali per cuore e cervello",
-      inStock: true,
-      badge: "Offerta"
-    },
-    {
-      id: 4,
-      name: "BCAA Energy Boost",
-      category: "Sport",
-      price: 24.99,
-      originalPrice: null,
-      rating: 4.6,
-      reviews: 543,
-      description: "Aminoacidi ramificati per energia durante l'allenamento",
-      inStock: true,
-      badge: null
-    },
-    {
-      id: 5,
-      name: "Collagene Anti-Age",
-      category: "Bellezza",
-      price: 39.99,
-      originalPrice: 45.99,
-      rating: 4.8,
-      reviews: 412,
-      description: "Collagene idrolizzato per pelle, capelli e articolazioni",
-      inStock: false,
-      badge: "Esaurito"
-    },
-    {
-      id: 6,
-      name: "Magnesio + Zinco",
-      category: "Benessere",
-      price: 19.99,
-      originalPrice: null,
-      rating: 4.5,
-      reviews: 367,
-      description: "Supporto per muscoli, sistema nervoso e sistema immunitario",
-      inStock: true,
-      badge: null
+  const fetchProducts = async () => {
+    try {
+      const { data, error } = await supabase
+        .from('products')
+        .select('*')
+        .order('created_at', { ascending: false });
+
+      if (error) throw error;
+      setProducts(data || []);
+    } catch (error) {
+      console.error('Error fetching products:', error);
+    } finally {
+      setLoading(false);
     }
-  ];
+  };
+
+  useEffect(() => {
+    fetchProducts();
+  }, []);
 
   const categories = ["Tutti", "Sport", "Benessere", "Salute", "Bellezza", "Energia"];
   const objectives = ["Tutti", "Recupero", "Energia", "Perdita Peso", "Detox", "Anti-età"];
@@ -233,7 +201,20 @@ const Shop = () => {
 
             {/* Products */}
             <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-6">
-              {products.map((product) => (
+              {loading ? (
+                Array.from({ length: 6 }).map((_, index) => (
+                  <Card key={index} className="animate-pulse">
+                    <CardContent className="p-0">
+                      <div className="h-48 bg-muted rounded-t-lg"></div>
+                      <div className="p-4 space-y-2">
+                        <div className="h-4 bg-muted rounded w-3/4"></div>
+                        <div className="h-3 bg-muted rounded w-full"></div>
+                        <div className="h-6 bg-muted rounded w-1/2"></div>
+                      </div>
+                    </CardContent>
+                  </Card>
+                ))
+              ) : products.map((product) => (
                 <Card key={product.id} className="group hover:shadow-card transition-all duration-300 hover:-translate-y-1">
                   <CardContent className="p-0">
                     {/* Product Image */}
@@ -243,19 +224,24 @@ const Shop = () => {
                         alt={product.name}
                         className="w-full h-48 object-cover group-hover:scale-105 transition-transform duration-300"
                       />
-                      {product.badge && (
+                      {product.badges && product.badges.length > 0 && (
                         <Badge className={`absolute top-3 left-3 ${
-                          product.badge === "Bestseller" ? "bg-primary" :
-                          product.badge === "Nuovo" ? "bg-wellness" :
-                          product.badge === "Offerta" ? "bg-destructive" :
+                          product.badges.includes("Bestseller") ? "bg-primary" :
+                          product.badges.includes("Nuovo") ? "bg-wellness" :
+                          product.badges.includes("Offerta") ? "bg-destructive" :
                           "bg-muted"
                         } text-white`}>
-                          {product.badge}
+                          {product.badges[0]}
                         </Badge>
                       )}
-                      {product.originalPrice && (
+                      {!product.in_stock && (
+                        <Badge className="absolute top-3 left-3 bg-muted text-muted-foreground">
+                          Esaurito
+                        </Badge>
+                      )}
+                      {product.original_price && (
                         <div className="absolute top-3 right-3 bg-background/90 text-foreground px-2 py-1 rounded text-xs font-medium">
-                          -€{(product.originalPrice - product.price).toFixed(2)}
+                          -€{(product.original_price - product.price).toFixed(2)}
                         </div>
                       )}
                     </div>
@@ -269,7 +255,7 @@ const Shop = () => {
                         <div className="flex items-center space-x-1">
                           <Star className="w-3 h-3 fill-primary text-primary" />
                           <span className="text-xs font-medium">{product.rating}</span>
-                          <span className="text-xs text-muted-foreground">({product.reviews})</span>
+                          <span className="text-xs text-muted-foreground">({product.reviews_count})</span>
                         </div>
                       </div>
 
@@ -283,20 +269,21 @@ const Shop = () => {
 
                       <div className="flex items-center justify-between">
                         <div className="flex items-center space-x-2">
-                          <span className="text-lg font-bold text-primary">€{product.price}</span>
-                          {product.originalPrice && (
+                          <span className="text-lg font-bold text-primary">€{product.price.toFixed(2)}</span>
+                          {product.original_price && (
                             <span className="text-xs text-muted-foreground line-through">
-                              €{product.originalPrice}
+                              €{product.original_price.toFixed(2)}
                             </span>
                           )}
                         </div>
                         
                         <Button 
                           size="sm" 
-                          className={`${product.inStock ? "bg-gradient-primary hover:opacity-90" : "bg-muted cursor-not-allowed"}`}
-                          disabled={!product.inStock}
+                          className={`${product.in_stock ? "bg-gradient-primary hover:opacity-90" : "bg-muted cursor-not-allowed"}`}
+                          disabled={!product.in_stock}
+                          onClick={() => product.in_stock && addToCart(product.id)}
                         >
-                          {product.inStock ? (
+                          {product.in_stock ? (
                             <>
                               <ShoppingCart className="w-3 h-3 mr-1" />
                               Aggiungi
